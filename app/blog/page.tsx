@@ -9,72 +9,9 @@ import { Calendar, Clock, Search, Plus, Trash2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { AuthModal } from "@/components/auth-modal"
+import { MOCK_BLOG_POSTS, type BlogPost } from "@/lib/blog-posts"
 
 const BLOG_CATEGORIES = ["전체", "인사이트", "회고", "트러블 슈팅", "독서"] as const
-
-// Mock data
-const BLOG_POSTS = [
-  {
-    id: "1",
-    title: "React 18의 새로운 기능들",
-    excerpt: "React 18에서 추가된 Concurrent Features와 Suspense의 활용법에 대해 알아보겠습니다.",
-    category: "인사이트",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    publishedAt: "2024-01-15",
-    readTime: "5분",
-    slug: "react-18-new-features",
-  },
-  {
-    id: "2",
-    title: "첫 프로젝트 회고록",
-    excerpt: "주니어 개발자로서 첫 프로젝트를 진행하면서 겪었던 시행착오와 배운 점들을 정리했습니다.",
-    category: "회고",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    publishedAt: "2024-01-10",
-    readTime: "8분",
-    slug: "first-project-retrospective",
-  },
-  {
-    id: "3",
-    title: "CORS 에러 해결하기",
-    excerpt: "개발 중 자주 마주치는 CORS 에러의 원인과 다양한 해결 방법들을 정리했습니다.",
-    category: "트러블 슈팅",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    publishedAt: "2024-01-05",
-    readTime: "6분",
-    slug: "solving-cors-errors",
-  },
-  {
-    id: "4",
-    title: "클린 코드 독서 후기",
-    excerpt: "로버트 C. 마틴의 클린 코드를 읽고 느낀 점과 실무에 적용해본 경험을 공유합니다.",
-    category: "독서",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    publishedAt: "2024-01-01",
-    readTime: "10분",
-    slug: "clean-code-review",
-  },
-  {
-    id: "5",
-    title: "TypeScript 타입 가드 활용법",
-    excerpt: "TypeScript에서 타입 가드를 활용하여 더 안전한 코드를 작성하는 방법을 알아보겠습니다.",
-    category: "인사이트",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    publishedAt: "2023-12-28",
-    readTime: "7분",
-    slug: "typescript-type-guards",
-  },
-  {
-    id: "6",
-    title: "Next.js 13 App Router 마이그레이션",
-    excerpt: "Pages Router에서 App Router로 마이그레이션하면서 겪었던 문제들과 해결 과정을 정리했습니다.",
-    category: "트러블 슈팅",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    publishedAt: "2023-12-25",
-    readTime: "12분",
-    slug: "nextjs-app-router-migration",
-  },
-]
 
 const CATEGORY_COLORS = {
   인사이트: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
@@ -86,16 +23,28 @@ const CATEGORY_COLORS = {
 export default function BlogPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("전체")
   const [searchQuery, setSearchQuery] = useState("")
-  const [blogPosts, setBlogPosts] = useState(BLOG_POSTS)
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>(MOCK_BLOG_POSTS) // Initialize with static posts
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authAction, setAuthAction] = useState<"write" | "delete">("write")
   const [postToDelete, setPostToDelete] = useState<string | null>(null)
 
   useEffect(() => {
-    // 로컬 스토리지에서 저장된 게시글 불러오기
-    const savedPosts = JSON.parse(localStorage.getItem("blog-posts") || "[]")
-    if (savedPosts.length > 0) {
-      setBlogPosts([...savedPosts, ...BLOG_POSTS])
+    if (typeof window !== "undefined") {
+      // Only access localStorage on the client
+      const savedPosts: BlogPost[] = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+
+      // Combine and ensure uniqueness, then sort by publishedAt in descending order (most recent first)
+      const combinedPosts = [...savedPosts, ...MOCK_BLOG_POSTS]
+      const uniqueCombinedPosts = Array.from(new Map(combinedPosts.map((item) => [item["slug"], item])).values())
+      uniqueCombinedPosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+
+      setBlogPosts(uniqueCombinedPosts)
+    } else {
+      // On server, just use the static posts, sorted
+      const sortedStaticPosts = [...MOCK_BLOG_POSTS].sort(
+        (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+      )
+      setBlogPosts(sortedStaticPosts)
     }
   }, [])
 
@@ -128,15 +77,15 @@ export default function BlogPage() {
       localStorage.setItem("blog-posts", JSON.stringify(updatedPosts))
 
       // 상태 업데이트
-      setBlogPosts([...updatedPosts, ...BLOG_POSTS])
+      setBlogPosts(blogPosts.filter((post) => post.id !== postToDelete))
       setPostToDelete(null)
       alert("게시글이 삭제되었습니다.")
     }
   }
 
   const isUserPost = (postId: string) => {
-    const savedPosts = JSON.parse(localStorage.getItem("blog-posts") || "[]")
-    return savedPosts.some((post: any) => post.id === postId)
+    const savedPosts: BlogPost[] = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+    return savedPosts.some((post: BlogPost) => post.id === postId)
   }
 
   return (

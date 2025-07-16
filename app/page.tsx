@@ -7,87 +7,28 @@ import { Calendar, Clock, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useState } from "react"
-
-// Mock data - 실제로는 데이터베이스나 CMS에서 가져올 데이터
-const RECENT_POSTS = [
-  {
-    id: "1",
-    title: "React 18의 새로운 기능들",
-    excerpt: "React 18에서 추가된 Concurrent Features와 Suspense의 활용법에 대해 알아보겠습니다.",
-    category: "인사이트",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    publishedAt: "2024-01-15",
-    readTime: "5분",
-    slug: "react-18-new-features",
-  },
-  {
-    id: "2",
-    title: "첫 프로젝트 회고록",
-    excerpt: "주니어 개발자로서 첫 프로젝트를 진행하면서 겪었던 시행착오와 배운 점들을 정리했습니다.",
-    category: "회고",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    publishedAt: "2024-01-10",
-    readTime: "8분",
-    slug: "first-project-retrospective",
-  },
-  {
-    id: "3",
-    title: "CORS 에러 해결하기",
-    excerpt: "개발 중 자주 마주치는 CORS 에러의 원인과 다양한 해결 방법들을 정리했습니다.",
-    category: "트러블 슈팅",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    publishedAt: "2024-01-05",
-    readTime: "6분",
-    slug: "solving-cors-errors",
-  },
-  {
-    id: "4",
-    title: "클린 코드 독서 후기",
-    excerpt: "로버트 C. 마틴의 클린 코드를 읽고 느낀 점과 실무에 적용해본 경험을 공유합니다.",
-    category: "독서",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    publishedAt: "2024-01-01",
-    readTime: "10분",
-    slug: "clean-code-review",
-  },
-  {
-    id: "5",
-    title: "TypeScript 타입 가드 활용법",
-    excerpt: "TypeScript에서 타입 가드를 활용하여 더 안전한 코드를 작성하는 방법을 알아보겠습니다.",
-    category: "인사이트",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    publishedAt: "2023-12-28",
-    readTime: "7분",
-    slug: "typescript-type-guards",
-  },
-  {
-    id: "6",
-    title: "Next.js 13 App Router 마이그레이션",
-    excerpt: "Pages Router에서 App Router로 마이그레이션하면서 겪었던 문제들과 해결 과정을 정리했습니다.",
-    category: "트러블 슈팅",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    publishedAt: "2023-12-25",
-    readTime: "12분",
-    slug: "nextjs-app-router-migration",
-  },
-]
-
-const CATEGORY_COLORS = {
-  인사이트: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-  회고: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-  "트러블 슈팅": "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
-  독서: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-} as const
+import { MOCK_BLOG_POSTS, CATEGORY_COLORS, type BlogPost } from "@/lib/blog-posts"
 
 export default function HomePage() {
-  const [recentPosts, setRecentPosts] = useState(RECENT_POSTS)
+  const [recentPosts, setRecentPosts] = useState<BlogPost[]>(MOCK_BLOG_POSTS.slice(0, 6)) // Initialize with static posts
 
   useEffect(() => {
-    // 로컬 스토리지에서 저장된 게시글 불러오기
-    const savedPosts = JSON.parse(localStorage.getItem("blog-posts") || "[]")
-    if (savedPosts.length > 0) {
-      const combinedPosts = [...savedPosts, ...RECENT_POSTS]
-      setRecentPosts(combinedPosts.slice(0, 6)) // 최신 6개만 표시
+    if (typeof window !== "undefined") {
+      // Only access localStorage on the client
+      const savedPosts: BlogPost[] = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+      if (savedPosts.length > 0) {
+        const combinedPosts = [...savedPosts, ...MOCK_BLOG_POSTS]
+        // Ensure uniqueness and sort by publishedAt in descending order
+        const uniqueCombinedPosts = Array.from(new Map(combinedPosts.map((item) => [item["slug"], item])).values())
+        uniqueCombinedPosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+        setRecentPosts(uniqueCombinedPosts.slice(0, 6)) // 최신 6개만 표시
+      } else {
+        // If no saved posts, just use the static ones, sorted and sliced
+        const sortedStaticPosts = [...MOCK_BLOG_POSTS].sort(
+          (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+        )
+        setRecentPosts(sortedStaticPosts.slice(0, 6))
+      }
     }
   }, [])
 
@@ -126,7 +67,7 @@ export default function HomePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {recentPosts.map((post) => (
-            <Link key={post.id} href={`/blog/${post.slug}`} className="block">
+            <Link key={post.slug} href={`/blog/${post.slug}`} className="block">
               <Card className="group hover:shadow-lg transition-shadow cursor-pointer h-full">
                 <CardHeader className="p-0">
                   <div className="relative aspect-video overflow-hidden rounded-t-lg">
