@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Calendar, Clock, Search, Plus } from "lucide-react"
+import { Calendar, Clock, Search, Plus, Trash2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { AuthModal } from "@/components/auth-modal"
 
 const BLOG_CATEGORIES = ["전체", "인사이트", "회고", "트러블 슈팅", "독서"] as const
 
@@ -86,6 +87,9 @@ export default function BlogPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("전체")
   const [searchQuery, setSearchQuery] = useState("")
   const [blogPosts, setBlogPosts] = useState(BLOG_POSTS)
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authAction, setAuthAction] = useState<"write" | "delete">("write")
+  const [postToDelete, setPostToDelete] = useState<string | null>(null)
 
   useEffect(() => {
     // 로컬 스토리지에서 저장된 게시글 불러오기
@@ -103,6 +107,38 @@ export default function BlogPage() {
     return matchesCategory && matchesSearch
   })
 
+  const handleWriteClick = () => {
+    setAuthAction("write")
+    setShowAuthModal(true)
+  }
+
+  const handleDeleteClick = (postId: string) => {
+    setAuthAction("delete")
+    setPostToDelete(postId)
+    setShowAuthModal(true)
+  }
+
+  const handleAuthSuccess = () => {
+    if (authAction === "write") {
+      window.location.href = "/blog/write"
+    } else if (authAction === "delete" && postToDelete) {
+      // 로컬 스토리지에서 게시글 삭제
+      const savedPosts = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+      const updatedPosts = savedPosts.filter((post: any) => post.id !== postToDelete)
+      localStorage.setItem("blog-posts", JSON.stringify(updatedPosts))
+
+      // 상태 업데이트
+      setBlogPosts([...updatedPosts, ...BLOG_POSTS])
+      setPostToDelete(null)
+      alert("게시글이 삭제되었습니다.")
+    }
+  }
+
+  const isUserPost = (postId: string) => {
+    const savedPosts = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+    return savedPosts.some((post: any) => post.id === postId)
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -111,10 +147,8 @@ export default function BlogPage() {
           <h1 className="text-3xl font-bold tracking-tight">블로그</h1>
           <p className="text-muted-foreground">개발하면서 배운 것들을 기록합니다</p>
         </div>
-        <Button asChild>
-          <Link href="/blog/write">
-            <Plus className="mr-2 h-4 w-4" />글 작성하기
-          </Link>
+        <Button onClick={handleWriteClick}>
+          <Plus className="mr-2 h-4 w-4" />글 작성하기
         </Button>
       </div>
 
@@ -147,47 +181,64 @@ export default function BlogPage() {
       {/* Posts Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredPosts.map((post) => (
-          <Link key={post.id} href={`/blog/${post.slug}`} className="block">
-            <Card className="group hover:shadow-lg transition-shadow cursor-pointer h-full">
-              <CardHeader className="p-0">
-                <div className="relative aspect-video overflow-hidden rounded-t-lg">
-                  <Image
-                    src={post.thumbnail || "/placeholder.svg"}
-                    alt={post.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Badge
-                      variant="secondary"
-                      className={CATEGORY_COLORS[post.category as keyof typeof CATEGORY_COLORS]}
-                    >
-                      {post.category}
-                    </Badge>
+          <div key={post.id} className="relative group">
+            <Link href={`/blog/${post.slug}`} className="block">
+              <Card className="group hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <CardHeader className="p-0">
+                  <div className="relative aspect-video overflow-hidden rounded-t-lg">
+                    <Image
+                      src={post.thumbnail || "/placeholder.svg"}
+                      alt={post.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Badge
+                        variant="secondary"
+                        className={CATEGORY_COLORS[post.category as keyof typeof CATEGORY_COLORS]}
+                      >
+                        {post.category}
+                      </Badge>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Clock className="mr-1 h-3 w-3" />
+                        {post.readTime}
+                      </div>
+                    </div>
+
+                    <CardTitle className="line-clamp-2 group-hover:text-primary transition-colors">
+                      {post.title}
+                    </CardTitle>
+
+                    <p className="text-sm text-muted-foreground line-clamp-3">{post.excerpt}</p>
+
                     <div className="flex items-center text-sm text-muted-foreground">
-                      <Clock className="mr-1 h-3 w-3" />
-                      {post.readTime}
+                      <Calendar className="mr-1 h-3 w-3" />
+                      {new Date(post.publishedAt).toLocaleDateString("ko-KR")}
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </Link>
 
-                  <CardTitle className="line-clamp-2 group-hover:text-primary transition-colors">
-                    {post.title}
-                  </CardTitle>
-
-                  <p className="text-sm text-muted-foreground line-clamp-3">{post.excerpt}</p>
-
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Calendar className="mr-1 h-3 w-3" />
-                    {new Date(post.publishedAt).toLocaleDateString("ko-KR")}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+            {/* Delete Button for User Posts */}
+            {isUserPost(post.id) && (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleDeleteClick(post.id)
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         ))}
       </div>
 
@@ -196,6 +247,13 @@ export default function BlogPage() {
           <p className="text-muted-foreground">검색 결과가 없습니다.</p>
         </div>
       )}
+
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+        title={authAction === "write" ? "글 작성 권한 확인" : "글 삭제 권한 확인"}
+      />
     </div>
   )
 }

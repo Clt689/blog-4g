@@ -59,3 +59,34 @@
       "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
   }
 }
+
+@layer components {
+  /* VSCode 스타일 코드 블록 */
+  .blog-content .code-block {
+    @apply bg-slate-900 dark:bg-slate-800 text-slate-100 p-4 rounded-lg overflow-x-auto my-4;
+    font-family: "Fira Code", "Monaco", "Cascadia Code", "Roboto Mono", monospace;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .blog-content .code-block code {
+    @apply text-slate-100;
+    background: none !important;
+    padding: 0 !important;
+  }
+
+  /* 인라인 코드 스타일 */
+  .blog-content .inline-code {
+    @apply bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-1.5 py-0.5 rounded text-sm;
+    font-family: "Fira Code", "Monaco", "Cascadia Code", "Roboto Mono", monospace;
+  }
+
+  /* 다크모드에서 코드 블록 개선 */
+  .dark .blog-content .code-block {
+    @apply bg-slate-900 border border-slate-700;
+  }
+
+  .dark .blog-content .inline-code {
+    @apply bg-slate-800 text-slate-200 border border-slate-700;
+  }
+}

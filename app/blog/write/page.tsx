@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Upload, Save, Eye, ImageIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { AuthModal } from "@/components/auth-modal"
 
 const BLOG_CATEGORIES = ["인사이트", "회고", "트러블 슈팅", "독서"] as const
 
@@ -20,8 +21,17 @@ export default function BlogWritePage() {
   const [content, setContent] = useState("")
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [isPreview, setIsPreview] = useState(false)
+  const [showAuthModal, setShowAuthModal] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   const router = useRouter()
+
+  useEffect(() => {
+    // 페이지 접근 시 인증 확인
+    if (!isAuthenticated) {
+      setShowAuthModal(true)
+    }
+  }, [isAuthenticated])
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -78,6 +88,26 @@ export default function BlogWritePage() {
 
     alert("게시글이 발행되었습니다!")
     router.push("/blog")
+  }
+
+  const handleAuthSuccess = () => {
+    setIsAuthenticated(true)
+    setShowAuthModal(false)
+  }
+
+  const handleAuthClose = () => {
+    router.push("/blog")
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={handleAuthClose}
+        onSuccess={handleAuthSuccess}
+        title="글 작성 권한 확인"
+      />
+    )
   }
 
   return (
