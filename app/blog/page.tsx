@@ -72,9 +72,12 @@ export default function BlogPage() {
       window.location.href = "/blog/write"
     } else if (authAction === "delete" && postToDelete) {
       // 로컬 스토리지에서 게시글 삭제
-      const savedPosts = JSON.parse(localStorage.getItem("blog-posts") || "[]")
-      const updatedPosts = savedPosts.filter((post: any) => post.id !== postToDelete)
-      localStorage.setItem("blog-posts", JSON.stringify(updatedPosts))
+      if (typeof window !== "undefined") {
+        // Ensure localStorage access is client-side
+        const savedPosts = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+        const updatedPosts = savedPosts.filter((post: any) => post.id !== postToDelete)
+        localStorage.setItem("blog-posts", JSON.stringify(updatedPosts))
+      }
 
       // 상태 업데이트
       setBlogPosts(blogPosts.filter((post) => post.id !== postToDelete))
@@ -84,8 +87,12 @@ export default function BlogPage() {
   }
 
   const isUserPost = (postId: string) => {
-    const savedPosts: BlogPost[] = JSON.parse(localStorage.getItem("blog-posts") || "[]")
-    return savedPosts.some((post: BlogPost) => post.id === postId)
+    if (typeof window !== "undefined") {
+      // Ensure localStorage access is client-side
+      const savedPosts: BlogPost[] = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+      return savedPosts.some((post: BlogPost) => post.id === postId)
+    }
+    return false // On server, assume no user posts
   }
 
   return (
