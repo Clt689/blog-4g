@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -85,8 +85,17 @@ const CATEGORY_COLORS = {
 export default function BlogPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("전체")
   const [searchQuery, setSearchQuery] = useState("")
+  const [blogPosts, setBlogPosts] = useState(BLOG_POSTS)
 
-  const filteredPosts = BLOG_POSTS.filter((post) => {
+  useEffect(() => {
+    // 로컬 스토리지에서 저장된 게시글 불러오기
+    const savedPosts = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+    if (savedPosts.length > 0) {
+      setBlogPosts([...savedPosts, ...BLOG_POSTS])
+    }
+  }, [])
+
+  const filteredPosts = blogPosts.filter((post) => {
     const matchesCategory = selectedCategory === "전체" || post.category === selectedCategory
     const matchesSearch =
       post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -138,42 +147,47 @@ export default function BlogPage() {
       {/* Posts Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredPosts.map((post) => (
-          <Card key={post.id} className="group hover:shadow-lg transition-shadow">
-            <CardHeader className="p-0">
-              <div className="relative aspect-video overflow-hidden rounded-t-lg">
-                <Image
-                  src={post.thumbnail || "/placeholder.svg"}
-                  alt={post.title}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Badge variant="secondary" className={CATEGORY_COLORS[post.category as keyof typeof CATEGORY_COLORS]}>
-                    {post.category}
-                  </Badge>
+          <Link key={post.id} href={`/blog/${post.slug}`} className="block">
+            <Card className="group hover:shadow-lg transition-shadow cursor-pointer h-full">
+              <CardHeader className="p-0">
+                <div className="relative aspect-video overflow-hidden rounded-t-lg">
+                  <Image
+                    src={post.thumbnail || "/placeholder.svg"}
+                    alt={post.title}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Badge
+                      variant="secondary"
+                      className={CATEGORY_COLORS[post.category as keyof typeof CATEGORY_COLORS]}
+                    >
+                      {post.category}
+                    </Badge>
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Clock className="mr-1 h-3 w-3" />
+                      {post.readTime}
+                    </div>
+                  </div>
+
+                  <CardTitle className="line-clamp-2 group-hover:text-primary transition-colors">
+                    {post.title}
+                  </CardTitle>
+
+                  <p className="text-sm text-muted-foreground line-clamp-3">{post.excerpt}</p>
+
                   <div className="flex items-center text-sm text-muted-foreground">
-                    <Clock className="mr-1 h-3 w-3" />
-                    {post.readTime}
+                    <Calendar className="mr-1 h-3 w-3" />
+                    {new Date(post.publishedAt).toLocaleDateString("ko-KR")}
                   </div>
                 </div>
-
-                <CardTitle className="line-clamp-2 group-hover:text-primary transition-colors">
-                  <Link href={`/blog/${post.slug}`}>{post.title}</Link>
-                </CardTitle>
-
-                <p className="text-sm text-muted-foreground line-clamp-3">{post.excerpt}</p>
-
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Calendar className="mr-1 h-3 w-3" />
-                  {new Date(post.publishedAt).toLocaleDateString("ko-KR")}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 

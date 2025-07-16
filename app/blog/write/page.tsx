@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Upload, Save, Eye, ImageIcon } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 const BLOG_CATEGORIES = ["인사이트", "회고", "트러블 슈팅", "독서"] as const
 
@@ -20,6 +21,8 @@ export default function BlogWritePage() {
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [isPreview, setIsPreview] = useState(false)
 
+  const router = useRouter()
+
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -28,15 +31,53 @@ export default function BlogWritePage() {
   }
 
   const handleSave = () => {
-    // 실제로는 서버에 저장하는 로직
-    console.log("Saving post:", { title, category, content, thumbnail })
-    alert("게시글이 저장되었습니다!")
+    if (!title.trim() || !content.trim()) {
+      alert("제목과 내용을 입력해주세요.")
+      return
+    }
+
+    // 임시저장 로직
+    const draftPost = {
+      title: title.trim(),
+      category,
+      content: content.trim(),
+      thumbnail,
+      savedAt: new Date().toISOString(),
+    }
+
+    localStorage.setItem("blog-draft", JSON.stringify(draftPost))
+    alert("게시글이 임시저장되었습니다!")
   }
 
   const handlePublish = () => {
-    // 실제로는 서버에 발행하는 로직
-    console.log("Publishing post:", { title, category, content, thumbnail })
+    if (!title.trim() || !category || !content.trim()) {
+      alert("제목, 카테고리, 내용을 모두 입력해주세요.")
+      return
+    }
+
+    // 새 게시글 생성
+    const newPost = {
+      id: Date.now().toString(),
+      title: title.trim(),
+      excerpt: content.trim().substring(0, 150) + "...",
+      category,
+      thumbnail: thumbnail ? URL.createObjectURL(thumbnail) : "/placeholder.svg?height=200&width=300",
+      publishedAt: new Date().toISOString().split("T")[0],
+      readTime: Math.ceil(content.length / 200) + "분",
+      slug: title
+        .toLowerCase()
+        .replace(/[^a-z0-9가-힣]/g, "-")
+        .replace(/-+/g, "-"),
+      content: content.trim(),
+    }
+
+    // 로컬 스토리지에 저장
+    const existingPosts = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+    const updatedPosts = [newPost, ...existingPosts]
+    localStorage.setItem("blog-posts", JSON.stringify(updatedPosts))
+
     alert("게시글이 발행되었습니다!")
+    router.push("/blog")
   }
 
   return (

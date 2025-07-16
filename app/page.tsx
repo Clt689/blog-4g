@@ -1,9 +1,12 @@
+"use client"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar, Clock, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { useEffect, useState } from "react"
 
 // Mock data - 실제로는 데이터베이스나 CMS에서 가져올 데이터
 const RECENT_POSTS = [
@@ -77,6 +80,17 @@ const CATEGORY_COLORS = {
 } as const
 
 export default function HomePage() {
+  const [recentPosts, setRecentPosts] = useState(RECENT_POSTS)
+
+  useEffect(() => {
+    // 로컬 스토리지에서 저장된 게시글 불러오기
+    const savedPosts = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+    if (savedPosts.length > 0) {
+      const combinedPosts = [...savedPosts, ...RECENT_POSTS]
+      setRecentPosts(combinedPosts.slice(0, 6)) // 최신 6개만 표시
+    }
+  }, [])
+
   return (
     <div className="space-y-12">
       {/* Hero Section */}
@@ -111,46 +125,48 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {RECENT_POSTS.map((post) => (
-            <Card key={post.id} className="group hover:shadow-lg transition-shadow">
-              <CardHeader className="p-0">
-                <div className="relative aspect-video overflow-hidden rounded-t-lg">
-                  <Image
-                    src={post.thumbnail || "/placeholder.svg"}
-                    alt={post.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Badge
-                      variant="secondary"
-                      className={CATEGORY_COLORS[post.category as keyof typeof CATEGORY_COLORS]}
-                    >
-                      {post.category}
-                    </Badge>
+          {recentPosts.map((post) => (
+            <Link key={post.id} href={`/blog/${post.slug}`} className="block">
+              <Card className="group hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <CardHeader className="p-0">
+                  <div className="relative aspect-video overflow-hidden rounded-t-lg">
+                    <Image
+                      src={post.thumbnail || "/placeholder.svg"}
+                      alt={post.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Badge
+                        variant="secondary"
+                        className={CATEGORY_COLORS[post.category as keyof typeof CATEGORY_COLORS]}
+                      >
+                        {post.category}
+                      </Badge>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Clock className="mr-1 h-3 w-3" />
+                        {post.readTime}
+                      </div>
+                    </div>
+
+                    <CardTitle className="line-clamp-2 group-hover:text-primary transition-colors">
+                      {post.title}
+                    </CardTitle>
+
+                    <p className="text-sm text-muted-foreground line-clamp-3">{post.excerpt}</p>
+
                     <div className="flex items-center text-sm text-muted-foreground">
-                      <Clock className="mr-1 h-3 w-3" />
-                      {post.readTime}
+                      <Calendar className="mr-1 h-3 w-3" />
+                      {new Date(post.publishedAt).toLocaleDateString("ko-KR")}
                     </div>
                   </div>
-
-                  <CardTitle className="line-clamp-2 group-hover:text-primary transition-colors">
-                    <Link href={`/blog/${post.slug}`}>{post.title}</Link>
-                  </CardTitle>
-
-                  <p className="text-sm text-muted-foreground line-clamp-3">{post.excerpt}</p>
-
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Calendar className="mr-1 h-3 w-3" />
-                    {new Date(post.publishedAt).toLocaleDateString("ko-KR")}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       </section>

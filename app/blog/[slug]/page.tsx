@@ -1,3 +1,5 @@
+"use client"
+
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -5,6 +7,7 @@ import { Calendar, Clock, ArrowLeft, Share2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { notFound } from "next/navigation"
+import { useEffect, useState } from "react"
 
 // Mock data - 실제로는 데이터베이스에서 가져올 데이터
 const BLOG_POSTS = [
@@ -156,20 +159,87 @@ interface BlogPostPageProps {
   params: Promise<{ slug: string }>
 }
 
-export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const { slug } = await params
+export default function BlogPostPage({ params }: BlogPostPageProps) {
+  const [post, setPost] = useState<any>(null)
+  const [allPosts, setAllPosts] = useState<any[]>([])
+  const [currentIndex, setCurrentIndex] = useState(-1)
+  const [slug, setSlug] = useState<string>("")
 
-  // "write"는 특별한 경로이므로 404 처리
-  if (slug === "write") {
-    notFound()
-  }
+  useEffect(() => {
+    const getParams = async () => {
+      const resolvedParams = await params
+      setSlug(resolvedParams.slug)
+    }
+    getParams()
+  }, [params])
 
-  // slug를 기반으로 포스트 찾기
-  const post = BLOG_POSTS.find((p) => p.slug === slug)
+  useEffect(() => {
+    if (!slug) return
+
+    // "write"는 특별한 경로이므로 404 처리
+    if (slug === "write") {
+      notFound()
+    }
+
+    // 로컬 스토리지에서 저장된 게시글 불러오기
+    const savedPosts = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+    const combinedPosts = [...savedPosts, ...BLOG_POSTS]
+    setAllPosts(combinedPosts)
+
+    // 현재 게시글 찾기
+    const foundPost = combinedPosts.find((p) => p.slug === slug)
+    if (!foundPost) {
+      notFound()
+    }
+
+    setPost(foundPost)
+
+    // 현재 게시글의 인덱스 찾기 (최신 글이 먼저 오므로)
+    const index = combinedPosts.findIndex((p) => p.slug === slug)
+    setCurrentIndex(index)
+  }, [slug])
 
   if (!post) {
-    notFound()
+    return <div>Loading...</div>
   }
+
+  const renderMarkdown = (content: string) => {
+    return (
+      content
+        // 코드 블록 처리 (\`\`\`로 감싸진 부분)
+        .replace(
+          /```(\w+)?\n([\s\S]*?)```/g,
+          '<pre class="bg-muted p-4 rounded-lg overflow-x-auto"><code>$2</code></pre>',
+        )
+        // 인라인 코드 처리
+        .replace(/`([^`]+)`/g, '<code class="bg-muted px-1 py-0.5 rounded text-sm">$1</code>')
+        // 볼드 텍스트
+        .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+        // 이탤릭 텍스트
+        .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+        // 헤더 처리
+        .replace(/^### (.+)$/gm, '<h3 class="text-xl font-semibold mt-6 mb-3">$1</h3>')
+        .replace(/^## (.+)$/gm, '<h2 class="text-2xl font-bold mt-8 mb-4">$1</h2>')
+        .replace(/^# (.+)$/gm, '<h1 class="text-3xl font-bold mt-8 mb-6">$1</h1>')
+        // 링크 처리
+        .replace(
+          /\[([^\]]+)\]$$([^)]+)$$/g,
+          '<a href="$2" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">$1</a>',
+        )
+        // 리스트 처리
+        .replace(/^- (.+)$/gm, '<li class="ml-4">• $1</li>')
+        .replace(/^(\d+)\. (.+)$/gm, '<li class="ml-4">$1. $2</li>')
+        // 줄바꿈 처리
+        .replace(/\n\n/g, '</p><p class="mb-4">')
+        .replace(/\n/g, "<br>")
+        // 문단 래핑
+        .replace(/^(?!<[h1-6]|<pre|<li|<\/p>)(.+)/gm, '<p class="mb-4">$1</p>')
+    )
+  }
+
+  // 이전 글과 다음 글 계산
+  const prevPost = currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : null
+  const nextPost = currentIndex > 0 ? allPosts[currentIndex - 1] : null
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -222,38 +292,44 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       {/* Content */}
       <Card>
         <CardContent className="p-8">
-          <div className="prose prose-neutral dark:prose-invert max-w-none">
-            <div
-              dangerouslySetInnerHTML={{
-                __html: post.content
-                  .replace(/\n/g, "<br>")
-                  .replace(/```(\w+)?\n([\s\S]*?)```/g, "<pre><code>$2</code></pre>")
-                  .replace(/`([^`]+)`/g, "<code>$1</code>")
-                  .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-                  .replace(/\*([^*]+)\*/g, "<em>$1</em>")
-                  .replace(/^### (.+)$/gm, "<h3>$1</h3>")
-                  .replace(/^## (.+)$/gm, "<h2>$1</h2>")
-                  .replace(/^# (.+)$/gm, "<h1>$1</h1>"),
-              }}
-            />
-          </div>
+          <div
+            className="prose prose-neutral dark:prose-invert max-w-none"
+            dangerouslySetInnerHTML={{
+              __html: renderMarkdown(post.content),
+            }}
+          />
         </CardContent>
       </Card>
 
       {/* Navigation */}
       <div className="mt-12 flex justify-between">
-        <Button variant="outline" asChild>
-          <Link href="/blog">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            이전 글
-          </Link>
-        </Button>
-        <Button variant="outline" asChild>
-          <Link href="/blog">
-            다음 글
-            <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
-          </Link>
-        </Button>
+        <div className="flex-1">
+          {prevPost && (
+            <Button variant="outline" asChild>
+              <Link href={`/blog/${prevPost.slug}`}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                <div className="text-left">
+                  <div className="text-xs text-muted-foreground">이전 글</div>
+                  <div className="truncate max-w-[200px]">{prevPost.title}</div>
+                </div>
+              </Link>
+            </Button>
+          )}
+        </div>
+
+        <div className="flex-1 flex justify-end">
+          {nextPost && (
+            <Button variant="outline" asChild>
+              <Link href={`/blog/${nextPost.slug}`}>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground">다음 글</div>
+                  <div className="truncate max-w-[200px]">{nextPost.title}</div>
+                </div>
+                <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )
