@@ -15,7 +15,7 @@ interface AuthModalProps {
   title: string
 }
 
-const ADMIN_PASSWORD = "admin123" // 실제로는 환경변수나 더 안전한 방법 사용
+const ADMIN_PASSWORD = "123" // 실제로는 환경변수나 더 안전한 방법 사용
 
 export function AuthModal({ isOpen, onClose, onSuccess, title }: AuthModalProps) {
   const [password, setPassword] = useState("")
@@ -26,7 +26,6 @@ export function AuthModal({ isOpen, onClose, onSuccess, title }: AuthModalProps)
 
     if (password === ADMIN_PASSWORD) {
       onSuccess()
-      onClose()
       setPassword("")
       setError("")
     } else {

@@ -11,98 +11,96 @@ import { useEffect, useState } from "react"
 import { MOCK_BLOG_POSTS, type BlogPost, CATEGORY_COLORS } from "@/lib/blog-posts"
 
 interface BlogPostPageProps {
-  params: Promise<{ slug: string }>
+  params: { slug: string }
+}
+
+// This function is now the primary data-fetching mechanism
+const getPostData = (slug: string): BlogPost | null => {
+  if (typeof window === "undefined") {
+    // During server-side rendering or build time, only use static data
+    return MOCK_BLOG_POSTS.find((p) => p.slug === slug) || null
+  }
+
+  // On the client, combine static and local storage data
+  const savedPosts: BlogPost[] = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+  const combinedPosts = [...savedPosts, ...MOCK_BLOG_POSTS]
+  const uniquePosts = Array.from(new Map(combinedPosts.map((p) => [p.slug, p])).values())
+
+  return uniquePosts.find((p) => p.slug === slug) || null
 }
 
 export default function BlogPostPage({ params }: BlogPostPageProps) {
+  const { slug } = params
   const [post, setPost] = useState<BlogPost | null>(null)
-  const [allPosts, setAllPosts] = useState<BlogPost[]>(MOCK_BLOG_POSTS) // Initialize with static posts
+  const [allPosts, setAllPosts] = useState<BlogPost[]>([])
   const [currentIndex, setCurrentIndex] = useState(-1)
-  const [slug, setSlug] = useState<string>("")
 
   useEffect(() => {
-    const getParams = async () => {
-      const resolvedParams = await params
-      setSlug(resolvedParams.slug)
-    }
-    getParams()
-  }, [params])
-
-  useEffect(() => {
-    if (!slug) return
-
     if (slug === "write") {
       notFound()
+      return
     }
 
-    let combinedPosts: BlogPost[] = [...MOCK_BLOG_POSTS] // Start with static posts
+    // Fetch data on the client to ensure local storage is accessible
+    const postData = getPostData(slug)
 
-    if (typeof window !== "undefined") {
-      // Only access localStorage on the client
-      const savedPosts: BlogPost[] = JSON.parse(localStorage.getItem("blog-posts") || "[]")
-      combinedPosts = [...savedPosts, ...MOCK_BLOG_POSTS]
-    }
-
-    // Ensure unique posts if there are duplicates from savedPosts and MOCK_BLOG_POSTS
-    const uniqueCombinedPosts = Array.from(new Map(combinedPosts.map((item) => [item["slug"], item])).values())
-
-    // Sort by publishedAt in descending order (most recent first)
-    uniqueCombinedPosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
-
-    setAllPosts(uniqueCombinedPosts)
-
-    const foundPost = uniqueCombinedPosts.find((p) => p.slug === slug)
-    if (!foundPost) {
+    if (!postData) {
       notFound()
+      return
     }
-    setPost(foundPost)
 
-    const index = uniqueCombinedPosts.findIndex((p) => p.slug === slug)
-    setCurrentIndex(index)
-  }, [slug]) // Depend on slug
+    setPost(postData)
+
+    // Also fetch all posts for navigation
+    const savedPosts: BlogPost[] = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+    const combined = [...savedPosts, ...MOCK_BLOG_POSTS]
+    const unique = Array.from(new Map(combined.map((p) => [p.slug, p])).values())
+    unique.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+
+    setAllPosts(unique)
+    setCurrentIndex(unique.findIndex((p) => p.slug === slug))
+  }, [slug])
 
   if (!post) {
-    return <div>Loading...</div>
+    // Provide a loading state until client-side hydration is complete
+    return <div>Loading post...</div>
   }
 
   const renderMarkdown = (content: string) => {
     return (
       content
-        // 코드 블록 처리 (\`\`\`로 감싸진 부분)
+        // Code blocks
         .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre class="code-block"><code>$2</code></pre>')
-        // 인라인 코드 처리
+        // Inline code
         .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
-        // 볼드 텍스트
+        // Bold
         .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-        // 이탤릭 텍스트
+        // Italic
         .replace(/\*([^*]+)\*/g, "<em>$1</em>")
-        // 헤더 처리
+        // Headers
         .replace(/^### (.+)$/gm, '<h3 class="text-xl font-semibold mt-6 mb-3">$1</h3>')
         .replace(/^## (.+)$/gm, '<h2 class="text-2xl font-bold mt-8 mb-4">$1</h2>')
         .replace(/^# (.+)$/gm, '<h1 class="text-3xl font-bold mt-8 mb-6">$1</h1>')
-        // 링크 처리
+        // Links
         .replace(
-          /\[([^\]]+)\]$$([^)]+)$$/g,
+          /\[([^\]]+)\]$([^)]+)$/g,
           '<a href="$2" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">$1</a>',
         )
-        // 리스트 처리
+        // Lists
         .replace(/^- (.+)$/gm, '<li class="ml-4">• $1</li>')
         .replace(/^(\d+)\. (.+)$/gm, '<li class="ml-4">$1. $2</li>')
-        // 줄바꿈 처리
+        // Newlines and paragraphs
         .replace(/\n\n/g, '</p><p class="mb-4">')
         .replace(/\n/g, "<br>")
-        // 문단 래핑
         .replace(/^(?!<[h1-6]|<pre|<li|<\/p>)(.+)/gm, '<p class="mb-4">$1</p>')
     )
   }
 
-  // 이전 글과 다음 글 계산 (위치 변경)
-  const nextPost = currentIndex > 0 ? allPosts[currentIndex - 1] : null // 더 최신 글 (오른쪽)
-  const prevPost = currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : null // 더 오래된 글 (왼쪽)
+  const nextPost = currentIndex > 0 ? allPosts[currentIndex - 1] : null
+  const prevPost = currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : null
 
   return (
     <div className="max-w-4xl mx-auto">
-      {/* Back Button */}
       <div className="mb-6">
         <Button variant="ghost" asChild>
           <Link href="/blog">
@@ -112,7 +110,6 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
         </Button>
       </div>
 
-      {/* Header */}
       <div className="space-y-6 mb-8">
         <div className="relative aspect-[2/1] overflow-hidden rounded-lg">
           <Image src={post.thumbnail || "/placeholder.svg"} alt={post.title} fill className="object-cover" />
@@ -148,7 +145,6 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
         </div>
       </div>
 
-      {/* Content */}
       <Card>
         <CardContent className="p-8">
           <div
@@ -160,7 +156,6 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
         </CardContent>
       </Card>
 
-      {/* Navigation */}
       <div className="mt-12 flex justify-between">
         <div className="flex-1">
           {prevPost && (

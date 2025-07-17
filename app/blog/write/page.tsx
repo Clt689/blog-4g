@@ -21,17 +21,9 @@ export default function BlogWritePage() {
   const [content, setContent] = useState("")
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [isPreview, setIsPreview] = useState(false)
-  const [showAuthModal, setShowAuthModal] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   const router = useRouter()
-
-  useEffect(() => {
-    // 페이지 접근 시 인증 확인
-    if (!isAuthenticated) {
-      setShowAuthModal(true)
-    }
-  }, [isAuthenticated])
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -92,7 +84,6 @@ export default function BlogWritePage() {
 
   const handleAuthSuccess = () => {
     setIsAuthenticated(true)
-    setShowAuthModal(false)
   }
 
   const handleAuthClose = () => {
@@ -102,7 +93,7 @@ export default function BlogWritePage() {
   if (!isAuthenticated) {
     return (
       <AuthModal
-        isOpen={showAuthModal}
+        isOpen={!isAuthenticated} // Control modal directly with authentication state
         onClose={handleAuthClose}
         onSuccess={handleAuthSuccess}
         title="글 작성 권한 확인"
