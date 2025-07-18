@@ -22,8 +22,14 @@ export default function BlogWritePage() {
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [isPreview, setIsPreview] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-
   const router = useRouter()
+
+  useEffect(() => {
+    const isAuth = sessionStorage.getItem("isAuthenticated")
+    if (isAuth) {
+      setIsAuthenticated(true)
+    }
+  }, [])
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -83,6 +89,7 @@ export default function BlogWritePage() {
   }
 
   const handleAuthSuccess = () => {
+    sessionStorage.setItem("isAuthenticated", "true")
     setIsAuthenticated(true)
   }
 

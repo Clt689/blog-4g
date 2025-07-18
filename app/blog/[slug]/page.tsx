@@ -14,21 +14,6 @@ interface BlogPostPageProps {
   params: { slug: string }
 }
 
-// This function is now the primary data-fetching mechanism
-const getPostData = (slug: string): BlogPost | null => {
-  if (typeof window === "undefined") {
-    // During server-side rendering or build time, only use static data
-    return MOCK_BLOG_POSTS.find((p) => p.slug === slug) || null
-  }
-
-  // On the client, combine static and local storage data
-  const savedPosts: BlogPost[] = JSON.parse(localStorage.getItem("blog-posts") || "[]")
-  const combinedPosts = [...savedPosts, ...MOCK_BLOG_POSTS]
-  const uniquePosts = Array.from(new Map(combinedPosts.map((p) => [p.slug, p])).values())
-
-  return uniquePosts.find((p) => p.slug === slug) || null
-}
-
 export default function BlogPostPage({ params }: BlogPostPageProps) {
   const { slug } = params
   const [post, setPost] = useState<BlogPost | null>(null)
@@ -41,24 +26,23 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
       return
     }
 
-    // Fetch data on the client to ensure local storage is accessible
-    const postData = getPostData(slug)
+    if (typeof window !== "undefined") {
+      const savedPosts: BlogPost[] = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+      const postData = savedPosts.find((p) => p.slug === slug)
 
-    if (!postData) {
-      notFound()
-      return
+      if (!postData) {
+        notFound()
+        return
+      }
+
+      setPost(postData)
+
+      const sortedPosts = [...savedPosts].sort(
+        (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+      )
+      setAllPosts(sortedPosts)
+      setCurrentIndex(sortedPosts.findIndex((p) => p.slug === slug))
     }
-
-    setPost(postData)
-
-    // Also fetch all posts for navigation
-    const savedPosts: BlogPost[] = JSON.parse(localStorage.getItem("blog-posts") || "[]")
-    const combined = [...savedPosts, ...MOCK_BLOG_POSTS]
-    const unique = Array.from(new Map(combined.map((p) => [p.slug, p])).values())
-    unique.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
-
-    setAllPosts(unique)
-    setCurrentIndex(unique.findIndex((p) => p.slug === slug))
   }, [slug])
 
   if (!post) {

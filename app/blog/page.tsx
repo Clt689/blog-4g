@@ -30,21 +30,18 @@ export default function BlogPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // Only access localStorage on the client
-      const savedPosts: BlogPost[] = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+      const savedPosts = JSON.parse(localStorage.getItem("blog-posts") || "[]")
 
-      // Combine and ensure uniqueness, then sort by publishedAt in descending order (most recent first)
-      const combinedPosts = [...savedPosts, ...MOCK_BLOG_POSTS]
-      const uniqueCombinedPosts = Array.from(new Map(combinedPosts.map((item) => [item["slug"], item])).values())
-      uniqueCombinedPosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
-
-      setBlogPosts(uniqueCombinedPosts)
-    } else {
-      // On server, just use the static posts, sorted
-      const sortedStaticPosts = [...MOCK_BLOG_POSTS].sort(
-        (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
-      )
-      setBlogPosts(sortedStaticPosts)
+      // If no posts are saved, initialize with mock data
+      if (savedPosts.length === 0) {
+        localStorage.setItem("blog-posts", JSON.stringify(MOCK_BLOG_POSTS))
+        setBlogPosts(MOCK_BLOG_POSTS)
+      } else {
+        // Otherwise, load the saved posts
+        const uniquePosts = Array.from(new Map(savedPosts.map((p: any) => [p.slug, p])).values())
+        uniquePosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+        setBlogPosts(uniquePosts)
+      }
     }
   }, [])
 
@@ -71,29 +68,16 @@ export default function BlogPage() {
     if (authAction === "write") {
       window.location.href = "/blog/write"
     } else if (authAction === "delete" && postToDelete) {
-      // 로컬 스토리지에서 게시글 삭제
-      if (typeof window !== "undefined") {
-        // Ensure localStorage access is client-side
-        const savedPosts = JSON.parse(localStorage.getItem("blog-posts") || "[]")
-        const updatedPosts = savedPosts.filter((post: any) => post.id !== postToDelete)
-        localStorage.setItem("blog-posts", JSON.stringify(updatedPosts))
-      }
+      const savedPosts = JSON.parse(localStorage.getItem("blog-posts") || "[]")
+      const updatedPosts = savedPosts.filter((post: any) => post.id !== postToDelete)
+      localStorage.setItem("blog-posts", JSON.stringify(updatedPosts))
 
-      // 상태 업데이트
-      setBlogPosts(blogPosts.filter((post) => post.id !== postToDelete))
-      setPostToDelete(null)
-      alert("게시글이 삭제되었습니다.")
+      // Refresh the page to reflect the deletion
+      window.location.reload()
     }
   }
 
-  const isUserPost = (postId: string) => {
-    if (typeof window !== "undefined") {
-      // Ensure localStorage access is client-side
-      const savedPosts: BlogPost[] = JSON.parse(localStorage.getItem("blog-posts") || "[]")
-      return savedPosts.some((post: BlogPost) => post.id === postId)
-    }
-    return false // On server, assume no user posts
-  }
+  
 
   return (
     <div className="space-y-8">
@@ -180,20 +164,18 @@ export default function BlogPage() {
               </Card>
             </Link>
 
-            {/* Delete Button for User Posts */}
-            {isUserPost(post.id) && (
-              <Button
-                variant="destructive"
-                size="sm"
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => {
-                  e.preventDefault()
-                  handleDeleteClick(post.id)
-                }}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
+            {/* Delete Button for all posts */}
+            <Button
+              variant="destructive"
+              size="sm"
+              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.preventDefault()
+                handleDeleteClick(post.id)
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         ))}
       </div>
