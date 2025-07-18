@@ -22,6 +22,7 @@ export default function BlogWritePage() {
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [isPreview, setIsPreview] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isAuthChecked, setIsAuthChecked] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function BlogWritePage() {
     if (isAuth) {
       setIsAuthenticated(true)
     }
+    setIsAuthChecked(true)
   }, [])
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,6 +97,10 @@ export default function BlogWritePage() {
 
   const handleAuthClose = () => {
     router.push("/blog")
+  }
+
+  if (!isAuthChecked) {
+    return null // 인증 확인 중에는 아무것도 렌더링하지 않음
   }
 
   if (!isAuthenticated) {

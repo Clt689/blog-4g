@@ -28,7 +28,10 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
 
     if (typeof window !== "undefined") {
       const savedPosts: BlogPost[] = JSON.parse(localStorage.getItem("blog-posts") || "[]")
-      const postData = savedPosts.find((p) => p.slug === slug)
+      const combinedPosts = [...savedPosts, ...MOCK_BLOG_POSTS]
+      const uniquePosts = Array.from(new Map(combinedPosts.map((p) => [p.slug, p])).values())
+
+      const postData = uniquePosts.find((p) => p.slug === slug)
 
       if (!postData) {
         notFound()
@@ -37,7 +40,7 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
 
       setPost(postData)
 
-      const sortedPosts = [...savedPosts].sort(
+      const sortedPosts = [...uniquePosts].sort(
         (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
       )
       setAllPosts(sortedPosts)

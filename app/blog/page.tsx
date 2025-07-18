@@ -32,15 +32,16 @@ export default function BlogPage() {
     if (typeof window !== "undefined") {
       const savedPosts = JSON.parse(localStorage.getItem("blog-posts") || "[]")
 
-      // If no posts are saved, initialize with mock data
-      if (savedPosts.length === 0) {
-        localStorage.setItem("blog-posts", JSON.stringify(MOCK_BLOG_POSTS))
-        setBlogPosts(MOCK_BLOG_POSTS)
+      if (savedPosts.length > 0) {
+        const combinedPosts = [...savedPosts, ...MOCK_BLOG_POSTS]
+        const uniqueCombinedPosts = Array.from(new Map(combinedPosts.map((item) => [item["slug"], item])).values())
+        uniqueCombinedPosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+        setBlogPosts(uniqueCombinedPosts)
       } else {
-        // Otherwise, load the saved posts
-        const uniquePosts = Array.from(new Map(savedPosts.map((p: any) => [p.slug, p])).values())
-        uniquePosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
-        setBlogPosts(uniquePosts)
+        const sortedStaticPosts = [...MOCK_BLOG_POSTS].sort(
+          (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+        )
+        setBlogPosts(sortedStaticPosts)
       }
     }
   }, [])
